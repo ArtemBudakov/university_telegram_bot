@@ -5,6 +5,7 @@ from configuration import token_telegram, token_openweather
 bot = telebot.TeleBot(token_telegram, parse_mode=None)
 
 city_global = "saint petersburg"
+clients_global = {}
 
 
 def get_weather_from_openweather(city, days=2):
@@ -29,7 +30,6 @@ def get_weather_from_openweather(city, days=2):
                 days -= 1
         api_response = every_days
     except Exception as e:
-        print('error')
         print("Exception (forecast):", e)
         api_response = "Что-то пошло не так. Проверьте - правильно ли написано " \
                        "название города и попробуйте снова"
@@ -40,8 +40,7 @@ def get_weather_from_openweather(city, days=2):
 @bot.message_handler(commands=['start', 'help', 'старт', 'помощь'])
 def send_welcome(message):
     bot.reply_to(message, "Привет. У меня можно узнать погоду\n"
-                          "Напишите название города для которого вы хотите узнать погоду.\n"
-                          "Затем напишите 'weather' или 'погода' чтобы выбрать количество дней (максимум 5).")
+                          "Укажите город.\n")
 
 
 @bot.message_handler(commands=['weather', 'погода'])
@@ -77,11 +76,41 @@ def callback_inline(call):
 
 @bot.message_handler()
 def send_current_weather(message):
-    global city_global
-    city_global = message.text
-    # current_weather = get_weather_from_openweather(message.text)
-    print(f"city is {city_global}")
-    bot.reply_to(message, f"Ваш город - {city_global}")
+
+    if message.text.isdigit() and 0 < int(message.text) <= 5:
+        try:
+            global clients_global
+            clients_global[message.chat.id]['days'] = message.text
+            if clients_global[message.chat.id]["city"] == '':
+                bot.send_message(chat_id=message.chat.id, text="выберите город")
+            else:
+                current_weather = get_weather_from_openweather(city=clients_global[message.chat.id]["city"],
+                                                               days=int(clients_global[message.chat.id]["days"]))
+                bot.send_message(chat_id=message.chat.id, text=current_weather)
+        except KeyError:
+            # global clients_global
+            clients_global[message.chat.id] = {'days': message.text, 'city': ''}
+            print(clients_global)
+            bot.send_message(chat_id=message.chat.id, text=f"Напишите название города")
+
+    elif len(message.text) == 1 and message.text.isdigit():
+        bot.send_message(chat_id=message.chat.id, text=f"Недопустимое количество дней")
+
+    else:
+        try:
+            clients_global[message.chat.id]['city'] = message.text
+        except KeyError:
+            clients_global[message.chat.id] = {'days': "", "city": message.text}
+        current_weather = get_weather_from_openweather(clients_global[message.chat.id]['city'])
+        if current_weather == "Что-то пошло не так. Проверьте - правильно ли написано " \
+                              "название города и попробуйте снова":
+            bot.send_message(chat_id=message.chat.id, text=current_weather)
+        else:
+            bot.send_message(chat_id=message.chat.id,
+                             text=f"Вы выбрали город - {clients_global[message.chat.id]['city']}\n"\
+                                  f"На сколько дней выдать прогноз?")
+
+    # bot.reply_to(message, f"Ваш город - {city_global}")
 
 
 bot.polling()
