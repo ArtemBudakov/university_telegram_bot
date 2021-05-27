@@ -2,7 +2,7 @@ import datetime
 
 import telebot
 import requests
-from configuration import token_telegram, token_weatherstack
+from configuration import token_telegram, token_weatherstack, token_openweather
 bot = telebot.TeleBot(token_telegram, parse_mode=None)
 
 
@@ -24,6 +24,21 @@ def get_weather_request(city):
         return api_response
 
 
+def get_weather_from_openweather(city, days=5):
+    params = {"appid": token_openweather, "q": city}
+    try:
+        api_result = requests.get('http://api.openweathermap.org/data/2.5/forecast', params)
+        api_response = api_result.json()
+        print(api_response)
+    except Exception as e:
+        print('error')
+        print("Exception (forecast):", e)
+        api_response = "Что-то пошло не так. Проверьте - правильно ли написано " \
+                       "название города и попробуйте снова"
+    finally:
+        return api_response
+
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     bot.reply_to(message, "Привет. У меня можно узнать погоду\n"
@@ -38,12 +53,32 @@ def send_weather(message):
 @bot.message_handler()
 def send_current_weather(message):
     print(message.from_user.id)
-    current_weather = get_weather_request(message.text)
+    current_weather = get_weather_from_openweather(message.text)
     bot.reply_to(message, current_weather)
 
 
 # bot.polling()
 # bot.remove_webhook()
 
+
+def test(city_name, days=5):
+
+    params = {"appid": token_openweather, "q": city_name}
+    api_result = requests.get('http://api.openweathermap.org/data/2.5/forecast', params)
+    api_response = api_result.json()
+    every_days: str = ""
+    print(api_response)
+
+    for i in api_response['list']:
+        data = i['dt_txt']
+        temperature = str((int('{0:+3.0f}'.format(i['main']['temp']))) - 273.15)
+        description = i['weather'][0]['description']
+        one_block = data, temperature[:5], description
+        every_days += str(one_block)
+
+    print(every_days)
+
+
 if __name__ == '__main__':
-    get_weather_request('moscow')
+    # get_weather_from_openweather('moscow')
+    test('moscow')

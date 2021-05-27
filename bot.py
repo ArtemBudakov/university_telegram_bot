@@ -12,7 +12,7 @@ def send_message(chat_id, text):
 
 
 def get_weather(city):
-    params = {"access_key": token_weatherstack, "query": city, "forecast days": 3}
+    params = {"access_key": token_weatherstack, "query": city, "forecast_days": 5}
     api_result = requests.get('http://api.weatherstack.com/current', params)
     api_response = api_result.json()
     print(api_response)
@@ -24,10 +24,14 @@ def receive_update():
     if request.method == "POST":
         print(request.json)
         chat_id = request.json["message"]["chat"]["id"]
-        city = request.json["message"]["text"]
-        if city in ['london', 'moscow', 'saint-petersburg', 'abu-dabi']:
-            send_message(chat_id, get_weather(city))
+        text = request.json["message"]["text"]
+        if text in ['london', 'moscow', 'saint-petersburg', 'abu-dabi']:
+            send_message(chat_id, get_weather(text))
         else:
             text = "sorry, but I have not information about this city"
             send_message(chat_id, text)
     return {"ok": True}
+
+
+# if __name__ == '__main__':
+#     get_weather('london')
